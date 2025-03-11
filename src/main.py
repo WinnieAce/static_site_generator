@@ -1,6 +1,9 @@
 import os
 import shutil
+import sys
 from htmlnode import markdown_to_html_node, HTMLNode, LeafNode, ParentNode, extract_title
+
+basepath = sys.argv[1] if len(sys.argv) > 1 else '/' 
 
 def copy_static(source, destination):
     # First, clear the destination if it exists
@@ -33,10 +36,10 @@ def copy_static(source, destination):
     copy_recursive(source, destination)
 
 def main():
-    copy_static("static", "public")
-    generate_pages_recursive('content', 'template.html', 'public')
+    copy_static("static", "docs")
+    generate_pages_recursive('content', 'template.html', 'docs', basepath)
     
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     if not os.path.exists(from_path):
         raise ValueError(f"File {from_path} does not exist")
     if not os.path.exists(template_path):
@@ -54,12 +57,14 @@ def generate_page(from_path, template_path, dest_path):
     print('html: ', contents_html)
     content_title = extract_title(contents)
     final_page = template.replace("{{ Content }}", contents_html).replace("{{ Title }}", content_title)
-    
+            
+    final_page = final_page.replace('href="/', f'href="{basepath}').replace('src="/', f'src="{basepath}').replace("href='/", f"href='{basepath}").replace("src='/", f"src='{basepath}")
+
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     with open(dest_path, "w") as f:
         f.write(final_page)
     
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     directory_items = os.listdir(dir_path_content)
     for item in directory_items:
         full_path = os.path.join(dir_path_content, item)
@@ -67,11 +72,11 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
         
         if os.path.isdir(full_path):
             os.makedirs(dest_path, exist_ok=True)
-            generate_pages_recursive(full_path, template_path, dest_path)
+            generate_pages_recursive(full_path, template_path, dest_path, basepath)
         elif os.path.isfile(full_path):
             if item.endswith('.md'):
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                generate_page(full_path, template_path, dest_path)
+                generate_page(full_path, template_path, dest_path, basepath)
     
     
 if __name__ == "__main__":
